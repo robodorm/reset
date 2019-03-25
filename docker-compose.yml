@@ -4,7 +4,7 @@ services:
   resetapp.local:
     build:
       context: .
-      dockerfile: Docker4Compose # Dev version
+      dockerfile: Docker.localdev # Dev version
     image: reset-app
     container_name: reset-app
     healthcheck:
