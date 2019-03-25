@@ -1,0 +1,10 @@
+uwsgi
+python-dateutil
+flask
+flask-cors
+flask-rest-jsonapi
+marshmallow_enum
+jmespath
+sqlalchemy
+psycopg2-binary
+flask-jwt-extended

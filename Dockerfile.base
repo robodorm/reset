@@ -1,0 +1,12 @@
+FROM python:3.6
+
+RUN apt update && apt install supervisor -y
+RUN pip install --upgrade pip
+
+WORKDIR /app
+ADD . .
+
+RUN pip install . --upgrade
+ADD resetapp/etc /etc
+
+CMD ["/usr/bin/supervisord", "--configuration=/etc/supervisor/supervisord.conf"]

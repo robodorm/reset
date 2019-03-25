@@ -1,0 +1,104 @@
+---
+- config:
+    - testset: "REST TODO APP"
+    - variable_binds: !!map {
+      "h1_k": "Content-Type", "h1_v": "application/json"}
+
+- test:
+    - name: "AUTH FAIL"
+    - url: "/login"
+    - headers: {'template': {"$h1_k": "$h1_v"}}
+    - method: "POST"
+    - body: '{"username": "root","password": "root"}'
+    - expected_status: [401]
+    - validators:
+        - compare: { jmespath: "access_token", comparator: "type", expected: "none" }
+
+- test:
+    - name: "AUTH OK [admin]"
+    - url: "/login"
+    - headers: {'template': {"$h1_k": "$h1_v"}}
+    - method: "POST"
+    - body: '{"username": "admin","password": "admin"}'
+    - expected_status: [200]
+    - validators:
+        - compare: { jmespath: "access_token", comparator: "type", expected: "string" }
+    - extract_binds:
+        - 'access_token': {'jmespath': 'access_token'}
+
+- test:
+    - name: "CREATE TASK [admin]"
+    - url: "/api/v1/tasks"
+    - headers: {'template': {"$h1_k": "$h1_v", "Authorization": "Bearer $access_token"}}
+    - method: "POST"
+    - body: '{"data": { "type": "task", "attributes": {"title": "example-5", "status": "NEW"}}}'
+    - expected_status: [201]
+    - validators:
+        - compare: { jmespath: "data.id", comparator: "type", expected: "string" }
+    - extract_binds:
+        - 'task_id': {'jmespath': 'data.id'}
+
+- test:
+    - name: "AUTH OK [user]"
+    - url: "/login"
+    - headers: {'template': {"$h1_k": "$h1_v"}}
+    - method: "POST"
+    - body: '{"username": "user","password": "user"}'
+    - expected_status: [200]
+    - validators:
+        - compare: { jmespath: "access_token", comparator: "type", expected: "string" }
+    - extract_binds:
+        - 'user_access_token': {'jmespath': 'access_token'}
+
+- test:
+    - name: "UPDATE [admin] TASK STATUS FROM [user] TOKEN"
+    - url: {'template': "/api/v1/task/$task_id"}
+    - headers: {'template': {"$h1_k": "$h1_v", "Authorization": "Bearer $user_access_token"}}
+    - method: "PATCH"
+    - body: {'template': '{"data": {"type": "task", "id":"$task_id", "attributes": {"status": "ARCHIVED"}}}'}
+    - expected_status: [403]
+
+- test:
+    - name: "CHECK TASK STATUS NOT CHANGED [admin]"
+    - url: {'template': "/api/v1/task/$task_id"}
+    - headers: {'template': {"$h1_k": "$h1_v", "Authorization": "Bearer $access_token"}}
+    - method: "GET"
+    - expected_status: [200]
+    - validators:
+        - compare: { jmespath: "data", comparator: "type", expected: "dict" }
+        - compare: { jmespath: "data.attributes", comparator: "type", expected: "dict" }
+        - compare: { jmespath: "data.attributes.status", comparator: "eq", expected: "NEW" }
+
+- test:
+    - name: "UPDATE TASK STATUS [admin]"
+    - url: {'template': "/api/v1/task/$task_id"}
+    - headers: {'template': {"$h1_k": "$h1_v", "Authorization": "Bearer $access_token"}}
+    - method: "PATCH"
+    - body: {'template': '{"data": {"type": "task", "id":"$task_id", "attributes": {"status": "ARCHIVED"}}}'}
+    - expected_status: [200]
+
+- test:
+    - name: "CHECK TASK STATUS HAS CHANGED [admin]"
+    - url: {'template': "/api/v1/task/$task_id"}
+    - headers: {'template': {"$h1_k": "$h1_v", "Authorization": "Bearer $access_token"}}
+    - method: "GET"
+    - expected_status: [200]
+    - validators:
+        - compare: { jmespath: "data", comparator: "type", expected: "dict" }
+        - compare: { jmespath: "data.attributes", comparator: "type", expected: "dict" }
+        - compare: { jmespath: "data.attributes.status", comparator: "eq", expected: "ARCHIVED" }
+
+- test:
+    - name: "DELETE TASK [admin]"
+    - url: {'template': "/api/v1/task/$task_id"}
+    - headers: {'template': {"$h1_k": "$h1_v", "Authorization": "Bearer $access_token"}}
+    - method: "DELETE"
+    - expected_status: [200]
+
+- test:
+    - name: "CHECK TASK NOT ACCESSIBLE ANYMORE [admin]"
+    - url: {'template': "/api/v1/task/$task_id"}
+    - headers: {'template': {"$h1_k": "$h1_v", "Authorization": "Bearer $access_token"}}
+    - method: "GET"
+    - expected_status: [403]
+

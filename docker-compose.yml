@@ -1,0 +1,50 @@
+version: '2.1'
+
+services:
+  resetapp.local:
+    build:
+      context: .
+      dockerfile: Docker4Compose # Dev version
+    image: reset-app
+    container_name: reset-app
+    healthcheck:
+      test: ["CMD", "curl", "localhost/ping"]
+      interval: 30s
+      timeout: 30s
+      retries: 9
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "880:80"
+      - "882:82"
+    links:
+      - db:db
+    volumes:
+      - .:/app
+      - ./resetapp:/usr/local/lib/python3.6/site-packages/resetapp
+    environment:
+      ENVIRON: "LOCAL"
+      PGM_TPL: "postgresql://resetapp:resetapp@db:5432/resetapp"
+    command: python /app/resetapp/app.py
+    restart: on-failure
+
+  db:
+    image: postgres:11
+    container_name: reset-db
+    volumes:
+      - ./resetapp/migrations/000_init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      POSTGRES_DB: resetapp
+      POSTGRES_PASSWORD: resetapp
+      POSTGRES_USER: resetapp
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "resetapp"]
+      interval: 30s
+      timeout: 30s
+      retries: 9
+    ports:
+      - "5432:5432/tcp"
+    stdin_open: true
+    tty: true
+    restart: on-failure

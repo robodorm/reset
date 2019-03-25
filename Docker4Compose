@@ -1,0 +1,32 @@
+FROM python:3.6
+
+#
+# This file potentially can be excluded from the repository for local usage
+#
+
+RUN apt update && apt install supervisor locales mc -y
+
+RUN locale-gen "en_US.UTF-8"
+ENV LANG en_US.UTF-8
+ENV LC_ALL en_US.UTF-8
+
+RUN pip install --upgrade pip
+
+WORKDIR /app
+
+ADD . .
+RUN pip install . --upgrade
+ADD resetapp/etc /etc
+
+#
+# Experimental version
+WORKDIR /tmp
+RUN echo "v1" && pip install -e git+https://github.com/lootbox/pgmagic.git#egg=pgmagic --upgrade \
+    && ln -s /tmp/src/pgmagic/pgmagic /usr/local/lib/python3.6/site-packages/pgmagic
+
+
+WORKDIR /app
+ADD . .
+RUN pip install . --upgrade
+
+CMD ["/usr/bin/supervisord", "--configuration=/etc/supervisor/supervisord.conf"]
