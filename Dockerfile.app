@@ -1,4 +1,4 @@
-FROM lootbox/resetapp:base
+FROM robodorm/resetapp:base
 
 WORKDIR /app
 
